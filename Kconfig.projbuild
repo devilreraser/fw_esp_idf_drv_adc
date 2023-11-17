@@ -1,3 +1,8 @@
-menu "Component template Configuration"
+menu "Component drv_adc Configuration"
+
+    config DRV_ADC_USE
+        bool "Use drv_adc component"
+        default y
+        
 
 endmenu
