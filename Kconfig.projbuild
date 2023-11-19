@@ -3,6 +3,437 @@ menu "Component drv_adc Configuration"
     config DRV_ADC_USE
         bool "Use drv_adc component"
         default y
-        
 
+    config DRV_ADC_CONTINUOUS
+        bool "Use continuous mode or not"
+        default n
+        
+    config DRV_ADC_CHANNEL_RANGE_MIN
+        int "ADC Channel Minimum"
+        default 0
+
+    config DRV_ADC_ADC1_CHANNEL_RANGE_MAX
+        int "ADC1 Channel Maximum"
+        default 7
+
+    config DRV_ADC_ADC2_CHANNEL_RANGE_MAX
+        int "ADC2 Channel Maximum"
+        default 9
+    
+    config DRV_ADC_CHANNEL_RANGE_NONE
+        int "ADC Channel Not Used"
+        default -1
+
+    config DRV_ADC_INPUT_RANGE_NOT_USED
+        int "ADC Input Not Used"
+        default -2
+
+
+    config DRV_ADC_AIN_MAX
+        int "AIN Maximum used"
+        default 8
+
+    config DRV_ADC_ADC_COUNT_MAX
+        int "ADC count Maximum"
+        default 8
+
+    config DRV_ADC_CHANNEL_RANGE_MAX
+        int "ADC channels Maximum"
+        default DRV_ADC_ADC1_CHANNEL_RANGE_MAX if DRV_ADC_ADC1_CHANNEL_RANGE_MAX > DRV_ADC_ADC2_CHANNEL_RANGE_MAX
+        default DRV_ADC_ADC2_CHANNEL_RANGE_MAX if DRV_ADC_ADC2_CHANNEL_RANGE_MAX > DRV_ADC_ADC1_CHANNEL_RANGE_MAX
+
+
+    config DRV_ADC_AIN_0
+        choice DRV_ADC_AIN_0_PIN
+            prompt "AIN_0 Pin"
+            default DRV_ADC_AIN_0_PIN_NOT_USED
+            help
+                Select the AIN_0 Pin. Check Kconfig if no usable pins
+
+            config DRV_ADC_AIN_0_PIN_NOT_USED
+                bool "AIN_0 not used"
+            if IDF_TARGET_ESP32
+                config DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_36
+                    bool "AIN_0 ADC1_CH0 (GPIO 36)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH0
+                config DRV_ADC_AIN_0_PIN_ADC1_CH1_GPIO_37
+                    bool "AIN_0 ADC1_CH1 (GPIO 37)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH1
+                config DRV_ADC_AIN_0_PIN_ADC1_CH2_GPIO_38
+                    bool "AIN_0 ADC1_CH2 (GPIO 38)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH2
+                config DRV_ADC_AIN_0_PIN_ADC1_CH3_GPIO_39
+                    bool "AIN_0 ADC1_CH3 (GPIO 39)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH3
+                config DRV_ADC_AIN_0_PIN_ADC1_CH4_GPIO_32
+                    bool "AIN_0 ADC1_CH4 (GPIO 32)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH4
+                config DRV_ADC_AIN_0_PIN_ADC1_CH5_GPIO_33
+                    bool "AIN_0 ADC1_CH5 (GPIO 33)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH5
+                config DRV_ADC_AIN_0_PIN_ADC1_CH6_GPIO_34
+                    bool "AIN_0 ADC1_CH6 (GPIO 34)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH6
+                config DRV_ADC_AIN_0_PIN_ADC1_CH7_GPIO_35
+                    bool "AIN_0 ADC1_CH7 (GPIO 35)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH7
+                config DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_4
+                    bool "AIN_0 ADC2_CH0 (GPIO 4)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH0
+                config DRV_ADC_AIN_0_PIN_ADC2_CH1_GPIO_0
+                    bool "AIN_0 ADC2_CH1 (GPIO 0)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH1
+                config DRV_ADC_AIN_0_PIN_ADC2_CH2_GPIO_2
+                    bool "AIN_0 ADC2_CH2 (GPIO 2)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH2
+                config DRV_ADC_AIN_0_PIN_ADC2_CH3_GPIO_15
+                    bool "AIN_0 ADC2_CH3 (GPIO 15)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH3
+                config DRV_ADC_AIN_0_PIN_ADC2_CH4_GPIO_13
+                    bool "AIN_0 ADC2_CH4 (GPIO 13)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH4
+                config DRV_ADC_AIN_0_PIN_ADC2_CH5_GPIO_12
+                    bool "AIN_0 ADC2_CH5 (GPIO 12)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH5
+                config DRV_ADC_AIN_0_PIN_ADC2_CH6_GPIO_14
+                    bool "AIN_0 ADC2_CH6 (GPIO 14)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH6
+                config DRV_ADC_AIN_0_PIN_ADC2_CH7_GPIO_27
+                    bool "AIN_0 ADC2_CH7 (GPIO 27)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH7
+                config DRV_ADC_AIN_0_PIN_ADC2_CH8_GPIO_25
+                    bool "AIN_0 ADC2_CH8 (GPIO 25)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH8
+                config DRV_ADC_AIN_0_PIN_ADC2_CH9_GPIO_26
+                    bool "AIN_0 ADC2_CH9 (GPIO 26)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH9
+            endif
+            if IDF_TARGET_ESP32S3
+                config DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_1
+                    bool "AIN_0 ADC1_CH0 (GPIO 1)"
+                config DRV_ADC_AIN_0_PIN_ADC1_CH1_GPIO_2
+                    bool "AIN_0 ADC1_CH1 (GPIO 2)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH1
+                config DRV_ADC_AIN_0_PIN_ADC1_CH2_GPIO_3
+                    bool "AIN_0 ADC1_CH2 (GPIO 3)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH2
+                config DRV_ADC_AIN_0_PIN_ADC1_CH3_GPIO_4
+                    bool "AIN_0 ADC1_CH3 (GPIO 4)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH3
+                config DRV_ADC_AIN_0_PIN_ADC1_CH4_GPIO_5
+                    bool "AIN_0 ADC1_CH4 (GPIO 5)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH4
+                config DRV_ADC_AIN_0_PIN_ADC1_CH5_GPIO_6
+                    bool "AIN_0 ADC1_CH5 (GPIO 6)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH5
+                config DRV_ADC_AIN_0_PIN_ADC1_CH6_GPIO_7
+                    bool "AIN_0 ADC1_CH6 (GPIO 7)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH6
+                config DRV_ADC_AIN_0_PIN_ADC1_CH7_GPIO_8
+                    bool "AIN_0 ADC1_CH7 (GPIO 8)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH7
+                config DRV_ADC_AIN_0_PIN_ADC1_CH8_GPIO_9
+                    bool "AIN_0 ADC1_CH8 (GPIO 9)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH8
+                config DRV_ADC_AIN_0_PIN_ADC1_CH9_GPIO_10
+                    bool "AIN_0 ADC1_CH9 (GPIO 10)"
+                    select DRV_ADC_AIN_0_PIN_ADC1_CH9
+                config DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_11
+                    bool "AIN_0 ADC2_CH0 (GPIO 11)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH0
+                config DRV_ADC_AIN_0_PIN_ADC2_CH1_GPIO_12
+                    bool "AIN_0 ADC2_CH1 (GPIO 12)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH1
+                config DRV_ADC_AIN_0_PIN_ADC2_CH2_GPIO_13
+                    bool "AIN_0 ADC2_CH2 (GPIO 13)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH2
+                config DRV_ADC_AIN_0_PIN_ADC2_CH3_GPIO_14
+                    bool "AIN_0 ADC2_CH3 (GPIO 14)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH3
+                config DRV_ADC_AIN_0_PIN_ADC2_CH4_GPIO_15
+                    bool "AIN_0 ADC2_CH4 (GPIO 15)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH4
+                config DRV_ADC_AIN_0_PIN_ADC2_CH5_GPIO_16
+                    bool "AIN_0 ADC2_CH5 (GPIO 16)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH5
+                config DRV_ADC_AIN_0_PIN_ADC2_CH6_GPIO_17
+                    bool "AIN_0 ADC2_CH6 (GPIO 17)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH6
+                config DRV_ADC_AIN_0_PIN_ADC2_CH7_GPIO_18
+                    bool "AIN_0 ADC2_CH7 (GPIO 18)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH7
+                config DRV_ADC_AIN_0_PIN_ADC2_CH8_GPIO_19
+                    bool "AIN_0 ADC2_CH8 (GPIO 19)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH8
+                config DRV_ADC_AIN_0_PIN_ADC2_CH9_GPIO_20
+                    bool "AIN_0 ADC2_CH9 (GPIO 20)"
+                    select DRV_ADC_AIN_0_PIN_ADC2_CH9
+            endif
+    
+        endchoice
+        
+    config DRV_ADC_AIN_0_PIN_ADC1_CH0
+        bool  "AIN_0 ADC1_CH0"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_36 || DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_1
+        default y 
+
+    config DRV_ADC_AIN_0_PIN_ADC1_CH1
+        bool  "AIN_0 ADC1_CH1"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH1_GPIO_37 || DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_2
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC1_CH2
+        bool  "AIN_0 ADC1_CH2"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH2_GPIO_38 || DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_3
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC1_CH3
+        bool  "AIN_0 ADC1_CH3"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH3_GPIO_39 || DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_4
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC1_CH4
+        bool  "AIN_0 ADC1_CH4"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH4_GPIO_32 || DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_5
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC1_CH5
+        bool  "AIN_0 ADC1_CH5"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH5_GPIO_33 || DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_6
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC1_CH6
+        bool  "AIN_0 ADC1_CH6"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH6_GPIO_34 || DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_7
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC1_CH7
+        bool  "AIN_0 ADC1_CH7"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH7_GPIO_35 || DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_8
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC1_CH8
+        bool  "AIN_0 ADC1_CH8"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_9
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC1_CH9
+        bool  "AIN_0 ADC1_CH9"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH0_GPIO_10
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC2_CH0
+        bool  "AIN_0 ADC2_CH0"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_4 || DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_11
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC2_CH1
+        bool  "AIN_0 ADC2_CH1"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH1_GPIO_0 || DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_12
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC2_CH2
+        bool  "AIN_0 ADC2_CH2"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH2_GPIO_2 || DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_13
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC2_CH3
+        bool  "AIN_0 ADC2_CH3"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH3_GPIO_15 || DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_14
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC2_CH4
+        bool  "AIN_0 ADC2_CH4"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH4_GPIO_13 || DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_15
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC2_CH5
+        bool  "AIN_0 ADC2_CH5"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH5_GPIO_12 || DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_16
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC2_CH6
+        bool  "AIN_0 ADC2_CH6"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH6_GPIO_14 || DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_17
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC2_CH7
+        bool  "AIN_0 ADC2_CH7"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH7_GPIO_27 || DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_18
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC2_CH8
+        bool  "AIN_0 ADC2_CH8"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH8_GPIO_25 || DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_19
+        default y
+
+    config DRV_ADC_AIN_0_PIN_ADC2_CH9
+        bool  "AIN_0 ADC2_CH9"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH9_GPIO_26 || DRV_ADC_AIN_0_PIN_ADC2_CH0_GPIO_20
+        default y
+
+
+    config DRV_ADC_AIN_0_ADC1_USE
+        bool "AIN_0 uses ADC1"
+        depends on DRV_ADC_AIN_0_PIN_ADC1_CH0 || DRV_ADC_AIN_0_PIN_ADC1_CH1 || DRV_ADC_AIN_0_PIN_ADC1_CH2 || DRV_ADC_AIN_0_PIN_ADC1_CH3 || DRV_ADC_AIN_0_PIN_ADC1_CH4 || DRV_ADC_AIN_0_PIN_ADC1_CH5 || DRV_ADC_AIN_0_PIN_ADC1_CH6 || DRV_ADC_AIN_0_PIN_ADC1_CH7 || DRV_ADC_AIN_0_PIN_ADC1_CH8 || DRV_ADC_AIN_0_PIN_ADC1_CH9 
+        default y
+
+    config DRV_ADC_AIN_0_ADC2_USE
+        bool "AIN_0 uses ADC2"
+        depends on DRV_ADC_AIN_0_PIN_ADC2_CH0 || DRV_ADC_AIN_0_PIN_ADC2_CH1 || DRV_ADC_AIN_0_PIN_ADC2_CH2 || DRV_ADC_AIN_0_PIN_ADC2_CH3 || DRV_ADC_AIN_0_PIN_ADC2_CH4 || DRV_ADC_AIN_0_PIN_ADC2_CH5 || DRV_ADC_AIN_0_PIN_ADC2_CH6 || DRV_ADC_AIN_0_PIN_ADC2_CH7 || DRV_ADC_AIN_0_PIN_ADC2_CH8 || DRV_ADC_AIN_0_PIN_ADC2_CH9 
+        default y         
+
+
+    config DRV_ADC_AIN_1_USE
+        bool "AIN_1 usage"
+        default n
+
+    config DRV_ADC_AIN_1_ADC_NUM
+        int "AIN_1 used ADC (ADC1 or ADC2)"
+        depends on DRV_ADC_AIN_1_USE
+        range 1 2
+        default 1
+
+    config DRV_ADC_AIN_1_ADC_CHANNEL
+        int "AIN_1 used ADC Channel"
+        depends on DRV_ADC_AIN_1_USE
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC1_CHANNEL_RANGE_MAX if DRV_ADC_AIN_1_ADC_NUM = 1  
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC2_CHANNEL_RANGE_MAX if DRV_ADC_AIN_1_ADC_NUM = 2  
+        range DRV_ADC_INPUT_RANGE_NOT_USED DRV_ADC_CHANNEL_RANGE_NONE 
+        default -1
+        help
+            Range depends on the ADC used.
+
+
+    config DRV_ADC_AIN_2_USE
+        bool "AIN_2 usage"
+        default n
+
+    config DRV_ADC_AIN_2_ADC_NUM
+        int "AIN_2 used ADC (ADC1 or ADC2)"
+        depends on DRV_ADC_AIN_2_USE
+        range 1 2
+        default 1
+
+    config DRV_ADC_AIN_2_ADC_CHANNEL
+        int "AIN_2 used ADC Channel"
+        depends on DRV_ADC_AIN_2_USE
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC1_CHANNEL_RANGE_MAX if DRV_ADC_AIN_2_ADC_NUM = 1  
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC2_CHANNEL_RANGE_MAX if DRV_ADC_AIN_2_ADC_NUM = 2  
+        range DRV_ADC_INPUT_RANGE_NOT_USED DRV_ADC_CHANNEL_RANGE_NONE 
+        default -1
+        help
+            Range depends on the ADC used.
+
+
+    config DRV_ADC_AIN_3_USE
+        bool "AIN_3 usage"
+        default n
+
+    config DRV_ADC_AIN_3_ADC_NUM
+        int "AIN_3 used ADC (ADC1 or ADC2)"
+        depends on DRV_ADC_AIN_3_USE
+        range 1 2
+        default 1
+
+    config DRV_ADC_AIN_3_ADC_CHANNEL
+        int "AIN_3 used ADC Channel"
+        depends on DRV_ADC_AIN_3_USE
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC1_CHANNEL_RANGE_MAX if DRV_ADC_AIN_3_ADC_NUM = 1  
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC2_CHANNEL_RANGE_MAX if DRV_ADC_AIN_3_ADC_NUM = 2  
+        range DRV_ADC_INPUT_RANGE_NOT_USED DRV_ADC_CHANNEL_RANGE_NONE 
+        default -1
+        help
+            Range depends on the ADC used.
+
+
+    config DRV_ADC_AIN_4_USE
+        bool "AIN_4 usage"
+        default n
+
+    config DRV_ADC_AIN_4_ADC_NUM
+        int "AIN_4 used ADC (ADC1 or ADC2)"
+        depends on DRV_ADC_AIN_4_USE
+        range 1 2
+        default 1
+
+    config DRV_ADC_AIN_4_ADC_CHANNEL
+        int "AIN_4 used ADC Channel"
+        depends on DRV_ADC_AIN_4_USE
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC1_CHANNEL_RANGE_MAX if DRV_ADC_AIN_4_ADC_NUM = 1  
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC2_CHANNEL_RANGE_MAX if DRV_ADC_AIN_4_ADC_NUM = 2  
+        range DRV_ADC_INPUT_RANGE_NOT_USED DRV_ADC_CHANNEL_RANGE_NONE 
+        default -1
+        help
+            Range depends on the ADC used.
+
+
+    config DRV_ADC_AIN_5_USE
+        bool "AIN_5 usage"
+        default n
+
+    config DRV_ADC_AIN_5_ADC_NUM
+        int "AIN_5 used ADC (ADC1 or ADC2)"
+        depends on DRV_ADC_AIN_5_USE
+        range 1 2
+        default 1
+
+    config DRV_ADC_AIN_5_ADC_CHANNEL
+        int "AIN_5 used ADC Channel"
+        depends on DRV_ADC_AIN_5_USE
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC1_CHANNEL_RANGE_MAX if DRV_ADC_AIN_5_ADC_NUM = 1  
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC2_CHANNEL_RANGE_MAX if DRV_ADC_AIN_5_ADC_NUM = 2  
+        range DRV_ADC_INPUT_RANGE_NOT_USED DRV_ADC_CHANNEL_RANGE_NONE 
+        default -1
+        help
+            Range depends on the ADC used.
+
+
+    config DRV_ADC_AIN_6_USE
+        bool "AIN_6 usage"
+        default n
+
+    config DRV_ADC_AIN_6_ADC_NUM
+        int "AIN_6 used ADC (ADC1 or ADC2)"
+        depends on DRV_ADC_AIN_6_USE
+        range 1 2
+        default 1
+
+    config DRV_ADC_AIN_6_ADC_CHANNEL
+        int "AIN_6 used ADC Channel"
+        depends on DRV_ADC_AIN_6_USE
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC1_CHANNEL_RANGE_MAX if DRV_ADC_AIN_6_ADC_NUM = 1  
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC2_CHANNEL_RANGE_MAX if DRV_ADC_AIN_6_ADC_NUM = 2  
+        range DRV_ADC_INPUT_RANGE_NOT_USED DRV_ADC_CHANNEL_RANGE_NONE 
+        default -1
+        help
+            Range depends on the ADC used.
+
+
+    config DRV_ADC_AIN_7_USE
+        bool "AIN_7 usage"
+        default n
+
+    config DRV_ADC_AIN_7_ADC_NUM
+        int "AIN_7 used ADC (ADC1 or ADC2)"
+        depends on DRV_ADC_AIN_7_USE
+        range 1 2
+        default 1
+
+    config DRV_ADC_AIN_7_ADC_CHANNEL
+        int "AIN_7 used ADC Channel"
+        depends on DRV_ADC_AIN_7_USE
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC1_CHANNEL_RANGE_MAX if DRV_ADC_AIN_7_ADC_NUM = 1  
+        range DRV_ADC_CHANNEL_RANGE_NONE DRV_ADC_ADC2_CHANNEL_RANGE_MAX if DRV_ADC_AIN_7_ADC_NUM = 2  
+        range DRV_ADC_INPUT_RANGE_NOT_USED DRV_ADC_CHANNEL_RANGE_NONE 
+        default -1
+        help
+            Range depends on the ADC used.
+
+
+
+    
+
+        
+    
 endmenu
