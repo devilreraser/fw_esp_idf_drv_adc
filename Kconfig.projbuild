@@ -6,7 +6,14 @@ menu "Component drv_adc Configuration"
 
     config DRV_ADC_CONTINUOUS
         bool "Use continuous mode or not"
+        select ADC_CONTINUOUS_ISR_IRAM_SAFE
         default n
+
+    config DRV_ADC_ONE_SHOT
+        bool "Use continuous mode or not"
+        select ADC_ONESHOT_CTRL_FUNC_IN_IRAM
+        default n
+
         
     config DRV_ADC_CHANNEL_RANGE_MIN
         int "ADC Channel Minimum"
@@ -34,7 +41,7 @@ menu "Component drv_adc Configuration"
         default 8
 
     config DRV_ADC_ADC_COUNT_MAX
-        int "ADC count Maximum"
+        int "ADC Units count Maximum"
         default 8
 
     config DRV_ADC_CHANNEL_RANGE_MAX

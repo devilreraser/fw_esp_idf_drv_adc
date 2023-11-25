@@ -411,14 +411,30 @@ adc_continuous_handle_t handle = NULL;
 static int adc_raw[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MAX];
 static int voltage[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MAX];
 
+int cont_sample_notify_count = 0;
+int cont_expected_process_count = 0;
+int cont_channels_processed = 0;
+
+int read_channels_in_loop_min = 0xFFFF;
+int read_channels_in_loop_max = 0;
+int cont_channels_in_loop_exact_count = 0;
+
+
 
 TaskHandle_t oneshot_task_handle = NULL;
 TaskHandle_t continuous_task_handle = NULL;
 
+#define ADC_CONT_COEF_OVERSIZE_POOL_BUFFER  1           /* how many times to allow buffer non-processed in continuous read bunch of samples */
 
-adc_digi_output_data_t continuous_read_result[CONFIG_DRV_ADC_ADC_COUNT_MAX] = {0};
+#define ADC_CONT_COEF_OVERSIZE_READ_BUFFER  1           /* on process data read how many frames of data to get */
+
+adc_digi_output_data_t continuous_read_result[CONFIG_DRV_ADC_AIN_MAX * ADC_CONT_COEF_OVERSIZE_READ_BUFFER] = {0};
 int channels_continuous_read = 0;
 
+char printBuffer[256];
+
+uint32_t continuous_read_sample_count[CONFIG_DRV_ADC_AIN_MAX] = {0};
+uint16_t analog_input_read_data[CONFIG_DRV_ADC_AIN_MAX] = {0};
 
 /* *****************************************************************************
  * Prototype of functions definitions
@@ -429,6 +445,13 @@ static void adc_calibration_deinit(adc_cali_handle_t handle);
 /* *****************************************************************************
  * Functions
  **************************************************************************** */
+
+uint16_t drv_adc_get_last_read_data(drv_adc_e_analog_input_t analog_input)
+{
+    return analog_input_read_data[analog_input];
+}
+
+
 
 static bool adc_calibration_init(adc_unit_t unit, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
@@ -551,13 +574,18 @@ void adc_task_one_shot(void* param)
                 esp_err_t err = adc_oneshot_read(adc_handle, ain_chn[index], &adc_raw[ain_adc[index]][ain_chn[index]]);
                 if (err != ESP_OK)
                 {
-                    ESP_LOGI(TAG, "ADC%d Channel[%d] Fail to read err %X (%s)", ain_adc[index] + 1, ain_chn[index], err, esp_err_to_name(err));
+                    ESP_LOGE(TAG, "ADC%d Channel[%d] Fail to read err %X (%s)", ain_adc[index] + 1, ain_chn[index], err, esp_err_to_name(err));
                 }
-                ESP_LOGI(TAG, "ADC%d Channel[%d] Raw Data: %d", ain_adc[index] + 1, ain_chn[index], adc_raw[ain_adc[index]][ain_chn[index]]);
+                else
+                {
+                    analog_input_read_data[index] = adc_raw[ain_adc[index]][ain_chn[index]];
+                }
+                    
+                ESP_LOGD(TAG, "ADC%d Channel[%d] Raw Data: %d", ain_adc[index] + 1, ain_chn[index], adc_raw[ain_adc[index]][ain_chn[index]]);
                 if (do_calibration1) 
                 {
                     ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc1_cali_handle, adc_raw[ain_adc[index]][ain_chn[index]], &voltage[ain_adc[index]][ain_chn[index]]));
-                    ESP_LOGI(TAG, "ADC%d Channel[%d] Cali Voltage: %d mV", ain_adc[index] + 1, ain_chn[index], voltage[ain_adc[index]][ain_chn[index]]);
+                    ESP_LOGD(TAG, "ADC%d Channel[%d] Cali Voltage: %d mV", ain_adc[index] + 1, ain_chn[index], voltage[ain_adc[index]][ain_chn[index]]);
                 }
                 sample_passed = true;
                 vTaskDelay(pdMS_TO_TICKS(100));
@@ -603,6 +631,8 @@ static bool IRAM_ATTR s_conv_done_cb(adc_continuous_handle_t handle, const adc_c
     //Notify that ADC continuous driver has done enough number of conversions
     vTaskNotifyGiveFromISR(continuous_task_handle, &mustYield);
 
+    cont_sample_notify_count++;
+
     return (mustYield == pdTRUE);
 }
 
@@ -611,13 +641,12 @@ static void continuous_adc_init(adc_continuous_handle_t *out_handle)
     adc_continuous_handle_t handle = NULL;
 
     adc_continuous_handle_cfg_t adc_config = {
-        .max_store_buf_size = 1024,
-        .conv_frame_size = sizeof(continuous_read_result),
+        .max_store_buf_size = SOC_ADC_DIGI_RESULT_BYTES * ADC_CONT_COEF_OVERSIZE_POOL_BUFFER * CONFIG_DRV_ADC_AIN_MAX,
+        .conv_frame_size = SOC_ADC_DIGI_RESULT_BYTES * CONFIG_DRV_ADC_AIN_MAX,
     };
-    ESP_ERROR_CHECK(adc_continuous_new_handle(&adc_config, &handle));
 
     adc_continuous_config_t dig_cfg = {
-        .sample_freq_hz = 20 * 1000,
+        .sample_freq_hz = SOC_ADC_SAMPLE_FREQ_THRES_LOW,    /* 20 kHz */
         .conv_mode = ADC_CONV_MODE,
         .format = ADC_OUTPUT_TYPE,
     };
@@ -652,6 +681,9 @@ static void continuous_adc_init(adc_continuous_handle_t *out_handle)
 
     }
     dig_cfg.adc_pattern = adc_pattern;
+    adc_config.max_store_buf_size = SOC_ADC_DIGI_RESULT_BYTES * ADC_CONT_COEF_OVERSIZE_POOL_BUFFER * channels_continuous_read;
+    adc_config.conv_frame_size = SOC_ADC_DIGI_RESULT_BYTES * channels_continuous_read;
+    ESP_ERROR_CHECK(adc_continuous_new_handle(&adc_config, &handle));
     ESP_ERROR_CHECK(adc_continuous_config(handle, &dig_cfg));
 
     *out_handle = handle;
@@ -684,8 +716,17 @@ void adc_init_continuous(void)
     ESP_ERROR_CHECK(adc_continuous_start(handle));
 }
 
+
+
+
+
 void adc_task_continuous(void* param)
 {
+    //int ainPrint[CONFIG_DRV_ADC_AIN_MAX];
+    //int channelPrint[CONFIG_DRV_ADC_AIN_MAX];
+    //uint16_t dataPrint[CONFIG_DRV_ADC_AIN_MAX];
+    
+
     memset(continuous_read_result, 0xFF, sizeof(continuous_read_result));   //set invalid data
 
     //continuous_task_handle = xTaskGetCurrentTaskHandle(); //not needed - made on Create
@@ -702,15 +743,26 @@ void adc_task_continuous(void* param)
          */
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
+        int read_channels_in_loop = 0;
+
         while (1) 
         {
             uint32_t ret_num = 0;
             esp_err_t ret;
-            ret = adc_continuous_read(handle, (uint8_t*)continuous_read_result, channels_continuous_read * SOC_ADC_DIGI_RESULT_BYTES, &ret_num, 0);
+            //ret = adc_continuous_read(handle, (uint8_t*)continuous_read_result, channels_continuous_read * SOC_ADC_DIGI_RESULT_BYTES, &ret_num, 0);
+            ret = adc_continuous_read(handle, (uint8_t*)continuous_read_result, sizeof(continuous_read_result), &ret_num, 0);
             if (ret == ESP_OK) 
             {
+
+
                 int channels_read = ret_num / SOC_ADC_DIGI_RESULT_BYTES;
-                ESP_LOGI("TASK", "ret is %x, ret_num is %"PRIu32" bytes (%d Channels)", ret, ret_num, channels_read);
+                ESP_LOGV("TASK", "ret is %x, ret_num is %"PRIu32" bytes (%d Channels)", ret, ret_num, channels_read);
+                //printBuffer[0] = 0; //clear buffer
+
+                read_channels_in_loop += channels_read;
+
+                cont_channels_processed += channels_read;
+
                 for (int i = 0; i < channels_read; i++) 
                 {
                     adc_digi_output_data_t *p = &continuous_read_result[i];
@@ -740,10 +792,21 @@ void adc_task_continuous(void* param)
                         ch_ain = ain_chn[ain_index];
                         adc_raw[unit_ain][ch_ain] = p->type1.data;
                     }
+                    else
+                    {
+                        continuous_read_sample_count[ain_index]++;
+                        analog_input_read_data[ain_index] = p->type1.data;
+                    }
 
 
+                    //ainPrint[i] = ain_index;
+                    //channelPrint[i] = p->type1.channel;
+                    //dataPrint[i] = p->type1.data;
 
-                    ESP_LOGI(TAG, "AIN: %d, Unit: %d, Channel: %d, Value: %x", ain_index, 1, p->type1.channel, p->type1.data);
+                    //sprintf(&printBuffer[strlen(printBuffer)], "AIN_%d[ch_%d]=%4d ", ainPrint[i], channelPrint[i], dataPrint[i]);//to do check buffer ovf
+                    //sprintf(&printBuffer[strlen(printBuffer)], "A%d=%4d ", ainPrint[i], dataPrint[i]);//to do check buffer ovf
+                    //ESP_LOGV(TAG, "AIN: %d, Unit: %d, Channel: %d, Value: %x", ain_index, 1, p->type1.channel, p->type1.data);
+
                     #else
                     if (ADC_CONV_MODE == ADC_CONV_BOTH_UNIT || ADC_CONV_MODE == ADC_CONV_ALTER_UNIT) 
                     {
@@ -771,16 +834,45 @@ void adc_task_continuous(void* param)
 
                     
                 }
+                //ESP_LOGD(TAG, "%s", printBuffer);
                 /**
                  * Because printing is slow, so every time you call `ulTaskNotifyTake`, it will immediately return.
                  * To avoid a task watchdog timeout, add a delay here. When you replace the way you process the data,
                  * usually you don't need this delay (as this task will block for a while).
                  */
-                vTaskDelay(100);
-            } else if (ret == ESP_ERR_TIMEOUT) {
+                //vTaskDelay(1);
+                if (channels_read == channels_continuous_read)
+                {
+                    cont_expected_process_count++;
+                }
+                if (channels_read >= channels_continuous_read)
+                {
+                    break;
+                }
+            } 
+            else if (ret == ESP_ERR_TIMEOUT) 
+            {
                 //We try to read `CONTINUOUS_READ_LEN` until API returns timeout, which means there's no available data
                 break;
             }
+            else
+            {
+                ESP_LOGE(TAG, "Read ADC continuous error %d (%s)", ret, esp_err_to_name(ret));
+            }
+        }
+
+
+        if (read_channels_in_loop_min > read_channels_in_loop)
+        {
+            read_channels_in_loop_min = read_channels_in_loop;
+        }
+        if (read_channels_in_loop_max < read_channels_in_loop)
+        {
+            read_channels_in_loop_max = read_channels_in_loop;
+        }
+        if (read_channels_in_loop == channels_continuous_read)
+        {
+            cont_channels_in_loop_exact_count++;
         }
     }
 }
@@ -795,17 +887,17 @@ void adc_deinit_continuous(void)
 void drv_adc_init(void)
 {
     #if CONFIG_DRV_ADC_CONTINUOUS
-    adc_init_continuous();
-    #else
-    adc_init_one_shot();
-    #endif
-
-
-    #if CONFIG_DRV_ADC_CONTINUOUS
     xTaskCreate(adc_task_continuous, "adc_continuous", 4096, NULL, configMAX_PRIORITIES - 20, &continuous_task_handle);
     #else
     xTaskCreate(adc_task_one_shot, "adc_oneshot", 4096, NULL, configMAX_PRIORITIES - 20, &oneshot_task_handle);
     #endif
+
+    #if CONFIG_DRV_ADC_CONTINUOUS
+    adc_init_continuous();  /* continuous_task_handle must be initialized here (adc_task_continuous must be created) otherwise task notify callback might fail */
+    #else
+    adc_init_one_shot();
+    #endif
+
 
 }
 
@@ -816,4 +908,39 @@ void drv_adc_deinit(void)
     #else
     adc_deinit_one_shot();
     #endif 
+}
+
+void drv_adc_cont_stat_print(void)
+{
+    uint32_t sample_count_diff[CONFIG_DRV_ADC_AIN_MAX];
+    uint32_t sample_count[CONFIG_DRV_ADC_AIN_MAX];
+    static uint32_t prev_sample_count[CONFIG_DRV_ADC_AIN_MAX] = {0};
+
+    static int64_t time_prev = 0;
+    int64_t time_now = esp_timer_get_time();
+    int64_t time_diff = time_now - time_prev;
+    time_prev = time_now;
+    char print_stat_buffer[256];
+    int samples_per_second[CONFIG_DRV_ADC_AIN_MAX];
+    
+
+    memcpy(sample_count, continuous_read_sample_count, sizeof(sample_count));
+    print_stat_buffer[0] = 0;
+    for (int index = 0; index < CONFIG_DRV_ADC_AIN_MAX; index++)
+    {
+        if (sample_count[index] > 0)
+        {
+            sample_count_diff[index] = sample_count[index] - prev_sample_count[index];
+            prev_sample_count[index] = sample_count[index];
+            samples_per_second[index] = ((uint64_t)sample_count_diff[index] * 1000000 + time_diff / 2 ) / time_diff;
+            sprintf(&print_stat_buffer[strlen(print_stat_buffer)], "AIN_%d=%4d %5d/%4lldms(%dsps)%6d ", index, (int)analog_input_read_data[index], (int)sample_count_diff[index], (time_diff+500)/1000, samples_per_second[index], (int)sample_count[index]);    //to do buffer ovf check
+        }
+
+        
+    }
+    
+    sprintf(&print_stat_buffer[strlen(print_stat_buffer)], "[%5d/%5d|%6d] ", cont_sample_notify_count, cont_expected_process_count, cont_channels_processed);
+    sprintf(&print_stat_buffer[strlen(print_stat_buffer)], "[%d/%d|%6d]", read_channels_in_loop_min, read_channels_in_loop_max, cont_channels_in_loop_exact_count);
+
+    ESP_LOGI(TAG, "%s", print_stat_buffer);
 }

@@ -18,6 +18,7 @@ extern "C"
 /* *****************************************************************************
  * Header Includes
  **************************************************************************** */
+#include <stdint.h>
     
 /* *****************************************************************************
  * Configuration Definitions
@@ -30,6 +31,18 @@ extern "C"
 /* *****************************************************************************
  * Enumeration Definitions
  **************************************************************************** */
+typedef enum
+{
+    DRV_ADC_AIN_0,
+    DRV_ADC_AIN_1,
+    DRV_ADC_AIN_2,
+    DRV_ADC_AIN_3,
+    DRV_ADC_AIN_4,
+    DRV_ADC_AIN_5,
+    DRV_ADC_AIN_6,
+    DRV_ADC_AIN_7,
+
+} drv_adc_e_analog_input_t;
 
 /* *****************************************************************************
  * Type Definitions
@@ -46,8 +59,10 @@ extern "C"
 /* *****************************************************************************
  * Function Prototypes
  **************************************************************************** */
+uint16_t drv_adc_get_last_read_data(drv_adc_e_analog_input_t analog_input);
 void drv_adc_init(void);
 void drv_adc_deinit(void);
+void drv_adc_cont_stat_print(void);
 
 #ifdef __cplusplus
 }
