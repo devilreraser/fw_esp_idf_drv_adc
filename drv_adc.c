@@ -451,6 +451,15 @@ uint16_t drv_adc_get_last_read_data(drv_adc_e_analog_input_t analog_input)
     return analog_input_read_data[analog_input];
 }
 
+uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_input)
+{
+    int millivolts;
+    adc_cali_handle_t cali_handle = (ain_adc[analog_input] == ADC_UNIT_1) ? adc1_cali_handle : (ain_adc[analog_input] == ADC_UNIT_2) ? adc2_cali_handle : NULL;
+
+    adc_cali_raw_to_voltage(cali_handle, analog_input_read_data[analog_input], &millivolts);
+    return millivolts;
+}
+
 
 
 static bool adc_calibration_init(adc_unit_t unit, adc_atten_t atten, adc_cali_handle_t *out_handle)
@@ -898,6 +907,19 @@ void drv_adc_init(void)
     adc_init_one_shot();
     #endif
 
+    int io_num;
+    esp_err_t ret;
+    for (int index = 0; index < CONFIG_DRV_ADC_AIN_MAX; index++)
+    {
+        if ((ain_adc[index] >= 0) && (ain_chn[index] >= 0))
+        {
+            ret = adc_oneshot_channel_to_io(ain_adc[index], ain_chn[index], &io_num);
+            if (ret == ESP_OK)
+            {
+                ESP_LOGI(TAG, "Setup AIN[%d] ADC[%d] CH[%d] IO[%d]", index, ain_adc[index], ain_chn[index], io_num);
+            }
+        }
+    }
 
 }
 

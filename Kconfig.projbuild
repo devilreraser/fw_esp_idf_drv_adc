@@ -51,8 +51,9 @@ menu "Component drv_adc Configuration"
 
 
     config DRV_ADC_AIN_0
+        bool "AIN_0 Pin"
         choice DRV_ADC_AIN_0_PIN
-            prompt "AIN_0 Pin"
+            prompt "AIN_0 Pin Selection"
             default DRV_ADC_AIN_0_PIN_NOT_USED
             help
                 Select the AIN_0 Pin. Check Kconfig if no usable pins

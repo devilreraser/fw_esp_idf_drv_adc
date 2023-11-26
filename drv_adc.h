@@ -60,6 +60,7 @@ typedef enum
  * Function Prototypes
  **************************************************************************** */
 uint16_t drv_adc_get_last_read_data(drv_adc_e_analog_input_t analog_input);
+uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_input);
 void drv_adc_init(void);
 void drv_adc_deinit(void);
 void drv_adc_cont_stat_print(void);
