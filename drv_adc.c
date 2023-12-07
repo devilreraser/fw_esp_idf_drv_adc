@@ -22,17 +22,31 @@
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "soc/soc_caps.h"
+#include "esp_log.h"
+#include "esp_err.h"
+#include "esp_idf_version.h"
+
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
-#include "esp_log.h"
-#include "esp_err.h"
 #include "esp_adc/adc_continuous.h"
+#else
+
+#endif
+
 
 /* *****************************************************************************
  * Configuration Definitions
  **************************************************************************** */
 #define TAG "drv_adc"
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#define ADC_CONT_COEF_OVERSIZE_POOL_BUFFER  1           /* how many times to allow buffer non-processed in continuous read bunch of samples */
+#define ADC_CONT_COEF_OVERSIZE_READ_BUFFER  1           /* on process data read how many frames of data to get */
+#endif
+
 
 
 /* *****************************************************************************
@@ -371,6 +385,7 @@
 /* *****************************************************************************
  * Variables Definitions
  **************************************************************************** */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 
 static int ain_adc[CONFIG_DRV_ADC_AIN_MAX] = 
 {
@@ -405,42 +420,43 @@ bool do_calibration2 = false;
 adc_oneshot_unit_handle_t adc2_handle;
 adc_cali_handle_t adc2_cali_handle = NULL;
 #endif
-
 adc_continuous_handle_t handle = NULL;
-
-static int adc_raw[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MAX];
-static int voltage[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MAX];
-
-int cont_sample_notify_count = 0;
-int cont_expected_process_count = 0;
-int cont_channels_processed = 0;
-
-int read_channels_in_loop_min = 0xFFFF;
-int read_channels_in_loop_max = 0;
-int cont_channels_in_loop_exact_count = 0;
-
-
+adc_digi_output_data_t continuous_read_result[CONFIG_DRV_ADC_AIN_MAX * ADC_CONT_COEF_OVERSIZE_READ_BUFFER] = {0};
 
 TaskHandle_t oneshot_task_handle = NULL;
 TaskHandle_t continuous_task_handle = NULL;
 
-#define ADC_CONT_COEF_OVERSIZE_POOL_BUFFER  1           /* how many times to allow buffer non-processed in continuous read bunch of samples */
+static int adc_raw[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MAX];
+static int voltage[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MAX];
 
-#define ADC_CONT_COEF_OVERSIZE_READ_BUFFER  1           /* on process data read how many frames of data to get */
+static int channels_continuous_read = 0;
 
-adc_digi_output_data_t continuous_read_result[CONFIG_DRV_ADC_AIN_MAX * ADC_CONT_COEF_OVERSIZE_READ_BUFFER] = {0};
-int channels_continuous_read = 0;
+static char printBuffer[256];
 
-char printBuffer[256];
+#endif
 
-uint32_t continuous_read_sample_count[CONFIG_DRV_ADC_AIN_MAX] = {0};
-uint16_t analog_input_read_data[CONFIG_DRV_ADC_AIN_MAX] = {0};
+
+static int cont_sample_notify_count = 0;
+static int cont_expected_process_count = 0;
+static int cont_channels_processed = 0;
+
+static int read_channels_in_loop_min = 0xFFFF;
+static int read_channels_in_loop_max = 0;
+static int cont_channels_in_loop_exact_count = 0;
+
+
+
+
+static uint32_t continuous_read_sample_count[CONFIG_DRV_ADC_AIN_MAX] = {0};
+static uint16_t analog_input_read_data[CONFIG_DRV_ADC_AIN_MAX] = {0};
 
 /* *****************************************************************************
  * Prototype of functions definitions
  **************************************************************************** */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 static bool adc_calibration_init(adc_unit_t unit, adc_atten_t atten, adc_cali_handle_t *out_handle);
 static void adc_calibration_deinit(adc_cali_handle_t handle);
+#endif
 
 /* *****************************************************************************
  * Functions
@@ -451,6 +467,9 @@ uint16_t drv_adc_get_last_read_data(drv_adc_e_analog_input_t analog_input)
     return analog_input_read_data[analog_input];
 }
 
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+
 uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_input)
 {
     int millivolts;
@@ -459,8 +478,6 @@ uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_i
     adc_cali_raw_to_voltage(cali_handle, analog_input_read_data[analog_input], &millivolts);
     return millivolts;
 }
-
-
 
 static bool adc_calibration_init(adc_unit_t unit, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
@@ -893,8 +910,11 @@ void adc_deinit_continuous(void)
 }
 
 
+#endif
+
 void drv_adc_init(void)
 {
+    #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     #if CONFIG_DRV_ADC_CONTINUOUS
     xTaskCreate(adc_task_continuous, "adc_continuous", 4096, NULL, configMAX_PRIORITIES - 20, &continuous_task_handle);
     #else
@@ -920,16 +940,18 @@ void drv_adc_init(void)
             }
         }
     }
-
+    #endif
 }
 
 void drv_adc_deinit(void)
 {
+    #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
     #if CONFIG_DRV_ADC_CONTINUOUS
     adc_deinit_continuous();
     #else
     adc_deinit_one_shot();
     #endif 
+    #endif
 }
 
 void drv_adc_cont_stat_print(void)
