@@ -42,7 +42,7 @@ menu "Component drv_adc Configuration"
 
     config DRV_ADC_ADC_COUNT_MAX
         int "ADC Units count Maximum"
-        default 8
+        default 2
 
     config DRV_ADC_CHANNEL_RANGE_MAX
         int "ADC channels Maximum"

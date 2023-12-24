@@ -7,7 +7,7 @@ set(conditionally_required_components "")
 if (idf_version GREATER_EQUAL "5.0.0")
     list(APPEND conditionally_required_components "esp_adc")
 else()
-    list(APPEND conditionally_required_components "")
+    list(APPEND conditionally_required_components "esp_adc_cal")
 endif()
 
 

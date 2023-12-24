@@ -33,6 +33,8 @@
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_continuous.h"
 #else
+#include "driver/adc.h"
+#include "esp_adc_cal.h"
 
 #endif
 
@@ -385,8 +387,6 @@
 /* *****************************************************************************
  * Variables Definitions
  **************************************************************************** */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
-
 static int ain_adc[CONFIG_DRV_ADC_AIN_MAX] = 
 {
     DRV_ADC_AIN_0_ADC_INDEX,
@@ -411,29 +411,36 @@ static int ain_chn[CONFIG_DRV_ADC_AIN_MAX] =
     DRV_ADC_AIN_7_CHANNEL,
 };
 
+static int adc_raw[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MAX];
+static int voltage[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MAX];
 
-bool do_calibration1 = false;
+bool calibration_enabled[CONFIG_DRV_ADC_ADC_COUNT_MAX] = { false };    
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+
 adc_oneshot_unit_handle_t adc1_handle;
 adc_cali_handle_t adc1_cali_handle = NULL;
 #if (SOC_ADC_PERIPH_NUM >= 2)
-bool do_calibration2 = false;
 adc_oneshot_unit_handle_t adc2_handle;
 adc_cali_handle_t adc2_cali_handle = NULL;
 #endif
 adc_continuous_handle_t handle = NULL;
 adc_digi_output_data_t continuous_read_result[CONFIG_DRV_ADC_AIN_MAX * ADC_CONT_COEF_OVERSIZE_READ_BUFFER] = {0};
 
-TaskHandle_t oneshot_task_handle = NULL;
-TaskHandle_t continuous_task_handle = NULL;
-
-static int adc_raw[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MAX];
-static int voltage[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MAX];
-
 static int channels_continuous_read = 0;
 
 static char printBuffer[256];
 
-#endif
+#else   // ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
+
+static esp_adc_cal_characteristics_t adc_chars[CONFIG_DRV_ADC_ADC_COUNT_MAX];
+
+
+
+#endif  // ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+
+TaskHandle_t oneshot_task_handle = NULL;
+TaskHandle_t continuous_task_handle = NULL;
 
 
 static int cont_sample_notify_count = 0;
@@ -548,7 +555,7 @@ void adc_init_one_shot(void)
     ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
 
     //-------------ADC1 Calibration Init---------------//
-    do_calibration1 = adc_calibration_init(ADC_UNIT_1, ADC_ATTEN_DB_11, &adc1_cali_handle);
+    calibration_enabled[ADC_UNIT_1 - 1] = adc_calibration_init(ADC_UNIT_1, ADC_ATTEN_DB_11, &adc1_cali_handle);
 
 
 
@@ -560,7 +567,7 @@ void adc_init_one_shot(void)
     ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config2, &adc2_handle));
 
     //-------------ADC2 Calibration Init---------------//
-    do_calibration2 = adc_calibration_init(ADC_UNIT_2, ADC_ATTEN_DB_11, &adc2_cali_handle);
+    calibration_enabled[ADC_UNIT_2 - 1] = adc_calibration_init(ADC_UNIT_2, ADC_ATTEN_DB_11, &adc2_cali_handle);
 
 
     //-------------ADC Config---------------//
@@ -581,67 +588,17 @@ void adc_init_one_shot(void)
 
 }
 
-void adc_task_one_shot(void* param)
-{
-
-    while (1) 
-    {
-        bool sample_passed = false;
-
-        for (int index = 0; index < CONFIG_DRV_ADC_AIN_MAX; index++)
-        {
-
-            adc_oneshot_unit_handle_t adc_handle = (ain_adc[index] == 0) ? adc1_handle : (ain_adc[index] == 1) ? adc2_handle : NULL;
-            if ((adc_handle != NULL) && (ain_chn[index] >= 0))
-            {
-                //ESP_LOGI(TAG, "ADC%d Channel[%d] Requested", ain_adc[index] + 1, ain_chn[index]);
-                //vTaskDelay(pdMS_TO_TICKS(1000));
-
-                esp_err_t err = adc_oneshot_read(adc_handle, ain_chn[index], &adc_raw[ain_adc[index]][ain_chn[index]]);
-                if (err != ESP_OK)
-                {
-                    ESP_LOGE(TAG, "ADC%d Channel[%d] Fail to read err %X (%s)", ain_adc[index] + 1, ain_chn[index], err, esp_err_to_name(err));
-                }
-                else
-                {
-                    analog_input_read_data[index] = adc_raw[ain_adc[index]][ain_chn[index]];
-                }
-                    
-                ESP_LOGD(TAG, "ADC%d Channel[%d] Raw Data: %d", ain_adc[index] + 1, ain_chn[index], adc_raw[ain_adc[index]][ain_chn[index]]);
-                if (do_calibration1) 
-                {
-                    ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc1_cali_handle, adc_raw[ain_adc[index]][ain_chn[index]], &voltage[ain_adc[index]][ain_chn[index]]));
-                    ESP_LOGD(TAG, "ADC%d Channel[%d] Cali Voltage: %d mV", ain_adc[index] + 1, ain_chn[index], voltage[ain_adc[index]][ain_chn[index]]);
-                }
-                sample_passed = true;
-                vTaskDelay(pdMS_TO_TICKS(100));
-            }
-            
-        }
-        if (sample_passed == false)
-        {
-            vTaskDelay(pdMS_TO_TICKS(900));
-        }
-        else
-        {
-            vTaskDelay(pdMS_TO_TICKS(1000));
-        }
-        
-    }
-    
-}
-
 void adc_deinit_one_shot(void)
 {
     //Tear Down
     ESP_ERROR_CHECK(adc_oneshot_del_unit(adc1_handle));
-    if (do_calibration1) {
+    if (calibration_enabled[ADC_UNIT_1 - 1]) {
         adc_calibration_deinit(adc1_cali_handle);
     }
 
 #if (SOC_ADC_PERIPH_NUM >= 2)
     ESP_ERROR_CHECK(adc_oneshot_del_unit(adc2_handle));
-    if (do_calibration2) {
+    if (calibration_enabled[ADC_UNIT_2 - 1]) {
         adc_calibration_deinit(adc2_cali_handle);
     }
 #endif /* #if (SOC_ADC_PERIPH_NUM >= 2) */
@@ -909,8 +866,220 @@ void adc_deinit_continuous(void)
     ESP_ERROR_CHECK(adc_continuous_deinit(handle));
 }
 
+#else   //ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 
+
+
+
+static esp_adc_cal_value_t check_efuse(void)
+{
+    esp_adc_cal_value_t best_cal_scheme = ESP_ADC_CAL_VAL_EFUSE_VREF;
+#if CONFIG_IDF_TARGET_ESP32
+    //Check if TP with curve is burned into eFuse
+    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP_FIT) == ESP_OK) 
+    {
+        printf("eFuse Two Point with curve: Supported\n");
+        best_cal_scheme = ESP_ADC_CAL_VAL_EFUSE_TP_FIT;
+    } 
+    else 
+    {
+        printf("eFuse Two Point with curve: NOT supported\n");
+    }
+    //Check if TP is burned into eFuse
+    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK)
+    {
+        printf("eFuse Two Point: Supported\n");
+        if (best_cal_scheme < ESP_ADC_CAL_VAL_EFUSE_TP) 
+        {
+            best_cal_scheme = ESP_ADC_CAL_VAL_EFUSE_TP;
+        }   
+    } 
+    else 
+    {
+        printf("eFuse Two Point: NOT supported\n");
+    }
+    //Check Vref is burned into eFuse
+    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_VREF) == ESP_OK) 
+    {
+        printf("eFuse Vref: Supported\n");
+        if (best_cal_scheme < ESP_ADC_CAL_VAL_EFUSE_VREF) 
+        {
+            best_cal_scheme = ESP_ADC_CAL_VAL_EFUSE_VREF;
+        }   
+    }
+    else 
+    {
+        printf("eFuse Vref: NOT supported\n");
+    }
+    //Check default Vref is burned into eFuse
+    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_DEFAULT_VREF) == ESP_OK) 
+    {
+        if (best_cal_scheme == ESP_ADC_CAL_VAL_EFUSE_VREF) 
+        {
+            best_cal_scheme = ESP_ADC_CAL_VAL_DEFAULT_VREF;
+        }   
+        printf("eFuse default Vref: Supported\n");
+    } 
+    else 
+    {
+        printf("eFuse default Vref: NOT supported\n");
+    }
+#elif CONFIG_IDF_TARGET_ESP32S2
+    if (esp_adc_cal_check_efuse(ESP_ADC_CAL_VAL_EFUSE_TP) == ESP_OK) 
+    {
+        printf("eFuse Two Point: Supported\n");
+        if (best_cal_scheme < ESP_ADC_CAL_VAL_EFUSE_TP) 
+        {
+            best_cal_scheme = ESP_ADC_CAL_VAL_EFUSE_TP;
+        }   
+    } 
+    else 
+    {
+        printf("Cannot retrieve eFuse Two Point calibration values. Default calibration values will be used.\n");
+    }
+#else
+#error "This example is configured for ESP32/ESP32S2."
 #endif
+    return best_cal_scheme;
+}
+
+static void print_char_val_type(esp_adc_cal_value_t val_type)
+{
+    if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP) {
+        printf("Characterized using Two Point Value\n");
+    } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_VREF) {
+        printf("Characterized using eFuse Vref\n");
+    } else if (val_type == ESP_ADC_CAL_VAL_EFUSE_TP_FIT) {
+        printf("Characterized using eFuse Vref\n");
+    } else {
+        printf("Characterized using Default Vref\n");
+    }
+}
+
+
+static bool adc_calibration_init(void)
+{
+    esp_adc_cal_value_t cali_scheme = ESP_ADC_CAL_VAL_EFUSE_TP_FIT;
+
+    esp_err_t ret;
+    bool cali_enable = false;
+
+    //Check if Two Point or Vref are burned into eFuse for info
+    esp_adc_cal_value_t best_cal_scheme = check_efuse();
+    if (best_cal_scheme < cali_scheme)
+    {
+        cali_scheme = best_cal_scheme;
+    }
+
+    ret = esp_adc_cal_check_efuse(cali_scheme);
+    if (ret == ESP_ERR_NOT_SUPPORTED) {
+        ESP_LOGW(TAG, "Calibration scheme not supported, skip software calibration");
+    } else if (ret == ESP_ERR_INVALID_VERSION) {
+        ESP_LOGW(TAG, "eFuse not burnt, skip software calibration");
+    } else if (ret == ESP_OK) {
+        cali_enable = true;
+    } else {
+        ESP_LOGE(TAG, "Invalid arg");
+    }
+
+    return cali_enable;
+}
+
+
+#endif  //ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+
+
+void adc_task_one_shot(void* param)
+{
+
+    while (1) 
+    {
+        bool sample_passed = false;
+
+        for (int index = 0; index < CONFIG_DRV_ADC_AIN_MAX; index++)
+        {
+            #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+
+            adc_oneshot_unit_handle_t adc_handle = (ain_adc[index] == 0) ? adc1_handle : (ain_adc[index] == 1) ? adc2_handle : NULL;
+            if ((adc_handle != NULL) && (ain_chn[index] >= 0))
+            {
+                //ESP_LOGI(TAG, "ADC%d Channel[%d] Requested", ain_adc[index] + 1, ain_chn[index]);
+                //vTaskDelay(pdMS_TO_TICKS(1000));
+
+                esp_err_t err = adc_oneshot_read(adc_handle, ain_chn[index], &adc_raw[ain_adc[index]][ain_chn[index]]);
+                if (err != ESP_OK)
+                {
+                    ESP_LOGE(TAG, "ADC%d Channel[%d] Fail to read err %X (%s)", ain_adc[index] + 1, ain_chn[index], err, esp_err_to_name(err));
+                }
+                else
+                {
+                    analog_input_read_data[index] = adc_raw[ain_adc[index]][ain_chn[index]];
+                }
+                    
+                ESP_LOGD(TAG, "ADC%d Channel[%d] Raw Data: %d", ain_adc[index] + 1, ain_chn[index], adc_raw[ain_adc[index]][ain_chn[index]]);
+                if (calibration_enabled[ain_adc[index]]) 
+                {
+                    ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc1_cali_handle, adc_raw[ain_adc[index]][ain_chn[index]], &voltage[ain_adc[index]][ain_chn[index]]));
+                    ESP_LOGD(TAG, "ADC%d Channel[%d] Cali Voltage: %d mV", ain_adc[index] + 1, ain_chn[index], voltage[ain_adc[index]][ain_chn[index]]);
+                }
+                sample_passed = true;
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
+
+            #else
+
+            if((ain_adc[index] < SOC_ADC_PERIPH_NUM) && (ain_chn[index] >= 0))
+            {
+                esp_err_t err = ESP_OK;
+                if (ain_adc[index] == 0)
+                {
+                    adc_raw[ain_adc[index]][ain_chn[index]] = adc1_get_raw(ain_chn[index]);
+                }
+                else
+                {
+                    err = adc2_get_raw(ain_chn[index], ADC_WIDTH_BIT_DEFAULT, &adc_raw[ain_adc[index]][ain_chn[index]]);
+                }
+                if (err != ESP_OK)
+                {
+                    ESP_LOGE(TAG, "ADC%d Channel[%d] Fail to read err %X (%s)", ain_adc[index] + 1, ain_chn[index], err, esp_err_to_name(err));
+                }
+                else
+                {
+                    analog_input_read_data[index] = adc_raw[ain_adc[index]][ain_chn[index]];
+                }
+
+                //Convert adc_reading to voltage in mV
+                if (calibration_enabled[ain_adc[index]]) 
+                {
+                    voltage[ain_adc[index]][ain_chn[index]] = esp_adc_cal_raw_to_voltage(adc_raw[ain_adc[index]][ain_chn[index]], &adc_chars[ain_adc[index]]);
+                    ESP_LOGI(TAG, "ADC%d Channel[%d] Cali Voltage: %d mV", ain_adc[index] + 1, ain_chn[index], voltage[ain_adc[index]][ain_chn[index]]);
+                }
+                else
+                {
+                    ESP_LOGI(TAG, "ADC%d Channel[%d] Raw Data: %d", ain_adc[index] + 1, ain_chn[index], adc_raw[ain_adc[index]][ain_chn[index]]);
+                }
+
+                sample_passed = true;
+                vTaskDelay(pdMS_TO_TICKS(100));
+            }
+
+            #endif
+            
+        }
+        if (sample_passed == false)
+        {
+            vTaskDelay(pdMS_TO_TICKS(900));
+        }
+        else
+        {
+            vTaskDelay(pdMS_TO_TICKS(1000));
+        }
+        
+    }
+    
+}
+
+
 
 void drv_adc_init(void)
 {
@@ -940,6 +1109,63 @@ void drv_adc_init(void)
             }
         }
     }
+    #else
+
+    static const adc_bits_width_t width = ADC_WIDTH_BIT_12;
+    static const adc_atten_t atten = ADC_ATTEN_DB_0;
+    static const uint32_t default_vref = 1100;
+
+
+    bool cali_enable = adc_calibration_init();
+    bool calibrate_adc1 = false;
+    bool calibrate_adc2 = false;
+
+
+
+    for (int index = 0; index < CONFIG_DRV_ADC_AIN_MAX; index++)
+    {
+        if((ain_adc[index] < SOC_ADC_PERIPH_NUM) && (ain_chn[index] >= 0))
+        {
+            adc_unit_t unit = (adc_unit_t)(ain_adc[index] + ADC_UNIT_1);
+
+            if (unit == ADC_UNIT_1)
+            {
+                adc1_config_width(width);
+                adc1_channel_t channel = (adc1_channel_t)ain_chn[index];
+                adc1_config_channel_atten(channel, atten);
+                calibrate_adc1 = true;
+            }
+            else if (unit == ADC_UNIT_2)
+            {
+                adc2_channel_t channel = (adc2_channel_t)ain_chn[index];
+                adc2_config_channel_atten(channel, atten);
+                calibrate_adc2 = true;
+            }
+        }
+    }
+
+    if (cali_enable) 
+    {
+        if (calibrate_adc1)
+        {
+            int index_adc = ADC_UNIT_1 - 1;
+            esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, atten, width, default_vref, &adc_chars[index_adc]);
+            print_char_val_type(val_type);
+        }
+        if (calibrate_adc2)
+        {
+            int index_adc = ADC_UNIT_2 - 1;
+            esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_2, atten, width, default_vref, &adc_chars[index_adc]);
+            print_char_val_type(val_type);
+        }
+    }
+
+    #if CONFIG_DRV_ADC_CONTINUOUS
+    xTaskCreate(adc_task_continuous, "adc_continuous", 4096, NULL, configMAX_PRIORITIES - 20, &continuous_task_handle);
+    #else
+    xTaskCreate(adc_task_one_shot, "adc_oneshot", 4096, NULL, configMAX_PRIORITIES - 20, &oneshot_task_handle);
+    #endif
+
     #endif
 }
 
