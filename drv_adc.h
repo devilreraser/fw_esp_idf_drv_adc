@@ -46,6 +46,13 @@ typedef enum
 
 } drv_adc_e_analog_input_t;
 
+typedef enum
+{
+    DRV_ADC_INDEX_ADC1,
+    DRV_ADC_INDEX_ADC2,
+    DRV_ADC_INDEX_COUNT,
+} drv_adc_e_adc_index_t;
+
 /* *****************************************************************************
  * Type Definitions
  **************************************************************************** */

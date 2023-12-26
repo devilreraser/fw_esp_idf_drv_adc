@@ -489,10 +489,13 @@ uint16_t drv_adc_get_last_read_data(drv_adc_e_analog_input_t analog_input)
 uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_input)
 {
     int millivolts;
-    adc_cali_handle_t cali_handle = (ain_adc[analog_input] == ADC_UNIT_1) ? adc1_cali_handle : (ain_adc[analog_input] == ADC_UNIT_2) ? adc2_cali_handle : NULL;
+    adc_cali_handle_t cali_handle = (ain_adc[analog_input] == DRV_ADC_INDEX_ADC1) ? adc1_cali_handle : (ain_adc[analog_input] == DRV_ADC_INDEX_ADC2) ? adc2_cali_handle : NULL;
 
     adc_cali_raw_to_voltage(cali_handle, analog_input_read_data[analog_input], &millivolts);
-    voltage[] = 
+    if ((ain_adc[analog_input] < CONFIG_DRV_ADC_ADC_COUNT_MAX) && (ain_chn[analog_input] < CONFIG_DRV_ADC_CHANNEL_RANGE_MAX))
+    {
+        voltage[ain_adc[analog_input]][ain_chn[analog_input]] = millivolts;
+    }
     return millivolts;
 }
 
@@ -501,9 +504,12 @@ uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_i
 uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_input)
 {
     int millivolts;
-    adc_cali_handle_t cali_handle = (ain_adc[analog_input] == ADC_UNIT_1) ? adc1_cali_handle : (ain_adc[analog_input] == ADC_UNIT_2) ? adc2_cali_handle : NULL;
 
-    adc_cali_raw_to_voltage(cali_handle, analog_input_read_data[analog_input], &millivolts);
+    millivolts = esp_adc_cal_raw_to_voltage(adc_raw[ain_adc[analog_input]][ain_chn[analog_input]], &adc_chars[ain_adc[analog_input]]);
+    if ((ain_adc[analog_input] < CONFIG_DRV_ADC_ADC_COUNT_MAX) && (ain_chn[analog_input] < CONFIG_DRV_ADC_CHANNEL_RANGE_MAX))
+    {
+        voltage[ain_adc[analog_input]][ain_chn[analog_input]] = millivolts;
+    }
     return millivolts;
 }
 
@@ -606,7 +612,7 @@ void adc_init_one_shot(void)
 
     for (int index = 0; index < CONFIG_DRV_ADC_AIN_MAX; index++)
     {
-        adc_oneshot_unit_handle_t adc_handle = (ain_adc[index] == 0) ? adc1_handle : (ain_adc[index] == 1) ? adc2_handle : NULL;
+        adc_oneshot_unit_handle_t adc_handle = (ain_adc[index] == DRV_ADC_INDEX_ADC1) ? adc1_handle : (ain_adc[index] == DRV_ADC_INDEX_ADC2) ? adc2_handle : NULL;
         if ((adc_handle != NULL) && (ain_chn[index] >= 0))
         {
             ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, ain_chn[index], &config));
@@ -684,7 +690,7 @@ static void continuous_adc_init(adc_continuous_handle_t *out_handle)
         }
         else
         {
-            ESP_LOGE(TAG, "adc_pattern[%d] unit:%x channel:%x Invalid - fix CONFIG_DRV_ADC_AIN_MAX - limited to %d", i, ain_adc[i], ain_chn[i], i);
+            ESP_LOGE(TAG, "adc_pattern[%d] unit:%x channel:%x Invalid - fix CONFIG_DRV_ADC_AIN_MAX - limited to %d", i, ain_adc[i] + 1, ain_chn[i], i);
             dig_cfg.pattern_num = i;
             channels_continuous_read = i;
             break;
@@ -799,9 +805,7 @@ void adc_task_continuous(void* param)
                     if (ain_index >= channels_read)
                     {
                         ESP_LOGE(TAG, "Read Channel[%d] Not found in AIN Channels", ch);
-                        unit_ain = ain_adc[ain_index];
-                        ch_ain = ain_chn[ain_index];
-                        adc_raw[unit_ain][ch_ain] = p->type1.data;
+                        adc_raw[ain_adc[ain_index]][ain_chn[ain_index]] = p->type1.data;
                     }
                     else
                     {
@@ -1030,7 +1034,7 @@ void adc_task_one_shot(void* param)
         {
             #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 
-            adc_oneshot_unit_handle_t adc_handle = (ain_adc[index] == 0) ? adc1_handle : (ain_adc[index] == 1) ? adc2_handle : NULL;
+            adc_oneshot_unit_handle_t adc_handle = (ain_adc[index] == DRV_ADC_INDEX_ADC1) ? adc1_handle : (ain_adc[index] == DRV_ADC_INDEX_ADC2) ? adc2_handle : NULL;
             if ((adc_handle != NULL) && (ain_chn[index] >= 0))
             {
                 //ESP_LOGI(TAG, "ADC%d Channel[%d] Requested", ain_adc[index] + 1, ain_chn[index]);
@@ -1132,7 +1136,7 @@ void drv_adc_init(void)
     {
         if ((ain_adc[index] >= 0) && (ain_chn[index] >= 0))
         {
-            ret = adc_oneshot_channel_to_io(ain_adc[index], ain_chn[index], &io_num);
+            ret = adc_oneshot_channel_to_io(ain_adc[index] + ADC_UNIT_1, ain_chn[index], &io_num);
             if (ret == ESP_OK)
             {
                 ESP_LOGI(TAG, "Setup AIN[%d] ADC[%d] CH[%d] IO[%d]", index, ain_adc[index], ain_chn[index], io_num);
@@ -1178,15 +1182,15 @@ void drv_adc_init(void)
     {
         if (calibrate_adc1)
         {
-            int index_adc = ADC_UNIT_1 - 1;
-            esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, attenuation, width, default_vref, &adc_chars[index_adc]);
+            int index_adc = DRV_ADC_INDEX_ADC1;
+            esp_adc_cal_value_t val_type = esp_adc_cal_characterize(index_adc + ADC_UNIT_1, attenuation, width, default_vref, &adc_chars[index_adc]);
             print_char_val_type(val_type);
             calibration_enabled[index_adc] = true;
         }
         if (calibrate_adc2)
         {
-            int index_adc = ADC_UNIT_2 - 1;
-            esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_2, attenuation, width, default_vref, &adc_chars[index_adc]);
+            int index_adc = DRV_ADC_INDEX_ADC2;
+            esp_adc_cal_value_t val_type = esp_adc_cal_characterize(index_adc + ADC_UNIT_2, attenuation, width, default_vref, &adc_chars[index_adc]);
             print_char_val_type(val_type);
             calibration_enabled[index_adc] = true;
         }
