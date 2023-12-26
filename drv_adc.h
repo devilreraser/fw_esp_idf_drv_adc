@@ -68,10 +68,9 @@ typedef enum
 /* *****************************************************************************
  * Function Prototypes
  **************************************************************************** */
+char* drv_adc_get_name(drv_adc_e_analog_input_t analog_input);
 uint16_t drv_adc_get_last_read_data(drv_adc_e_analog_input_t analog_input);
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_input);
-#endif
 void drv_adc_init(void);
 void drv_adc_deinit(void);
 void drv_adc_cont_stat_print(void);

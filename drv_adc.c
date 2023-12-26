@@ -371,6 +371,37 @@
 #define ADC_OUTPUT_TYPE     ADC_DIGI_OUTPUT_FORMAT_TYPE2
 #endif
 
+#ifndef CONFIG_DRV_ADC_AIN_0_NAME
+#define CONFIG_DRV_ADC_AIN_0_NAME "AIN0"
+#endif
+
+#ifndef CONFIG_DRV_ADC_AIN_1_NAME
+#define CONFIG_DRV_ADC_AIN_1_NAME "AIN1"
+#endif
+
+#ifndef CONFIG_DRV_ADC_AIN_2_NAME
+#define CONFIG_DRV_ADC_AIN_2_NAME "AIN2"
+#endif
+
+#ifndef CONFIG_DRV_ADC_AIN_3_NAME
+#define CONFIG_DRV_ADC_AIN_3_NAME "AIN3"
+#endif
+
+#ifndef CONFIG_DRV_ADC_AIN_4_NAME
+#define CONFIG_DRV_ADC_AIN_4_NAME "AIN4"
+#endif
+
+#ifndef CONFIG_DRV_ADC_AIN_5_NAME
+#define CONFIG_DRV_ADC_AIN_5_NAME "AIN5"
+#endif
+
+#ifndef CONFIG_DRV_ADC_AIN_6_NAME
+#define CONFIG_DRV_ADC_AIN_6_NAME "AIN6"
+#endif
+
+#ifndef CONFIG_DRV_ADC_AIN_7_NAME
+#define CONFIG_DRV_ADC_AIN_7_NAME "AIN7"
+#endif
 
 /* *****************************************************************************
  * Enumeration Definitions
@@ -387,6 +418,19 @@
 /* *****************************************************************************
  * Variables Definitions
  **************************************************************************** */
+static char* ain_name[CONFIG_DRV_ADC_AIN_MAX] = 
+{
+    CONFIG_DRV_ADC_AIN_0_NAME,
+    CONFIG_DRV_ADC_AIN_1_NAME,
+    CONFIG_DRV_ADC_AIN_2_NAME,
+    CONFIG_DRV_ADC_AIN_3_NAME,
+    CONFIG_DRV_ADC_AIN_4_NAME,
+    CONFIG_DRV_ADC_AIN_5_NAME,
+    CONFIG_DRV_ADC_AIN_6_NAME,
+    CONFIG_DRV_ADC_AIN_7_NAME,
+};
+
+
 static int ain_adc[CONFIG_DRV_ADC_AIN_MAX] = 
 {
     DRV_ADC_AIN_0_ADC_INDEX,
@@ -477,6 +521,11 @@ static void adc_calibration_deinit(adc_cali_handle_t handle);
 /* *****************************************************************************
  * Functions
  **************************************************************************** */
+
+char* drv_adc_get_name(drv_adc_e_analog_input_t analog_input)
+{
+    return ain_name[analog_input];
+}
 
 uint16_t drv_adc_get_last_read_data(drv_adc_e_analog_input_t analog_input)
 {

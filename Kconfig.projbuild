@@ -289,13 +289,29 @@ menu "Component drv_adc Configuration"
     config DRV_ADC_AIN_0_ADC2_USE
         bool "AIN_0 uses ADC2"
         depends on DRV_ADC_AIN_0_PIN_ADC2_CH0 || DRV_ADC_AIN_0_PIN_ADC2_CH1 || DRV_ADC_AIN_0_PIN_ADC2_CH2 || DRV_ADC_AIN_0_PIN_ADC2_CH3 || DRV_ADC_AIN_0_PIN_ADC2_CH4 || DRV_ADC_AIN_0_PIN_ADC2_CH5 || DRV_ADC_AIN_0_PIN_ADC2_CH6 || DRV_ADC_AIN_0_PIN_ADC2_CH7 || DRV_ADC_AIN_0_PIN_ADC2_CH8 || DRV_ADC_AIN_0_PIN_ADC2_CH9 
-        default y         
-
+        default y     
+        
+    config DRV_ADC_AIN_0_USE
+        bool "AIN_0 usage"
+        depends on DRV_ADC_AIN_0_ADC1_USE || DRV_ADC_AIN_0_ADC2_USE 
+        default y     
+        
+    config DRV_ADC_AIN_0_NAME
+        string "AIN_0 name"
+        depends on DRV_ADC_AIN_0_USE
+        default "AIN_0"     
+        
+        
 
     config DRV_ADC_AIN_1_USE
         bool "AIN_1 usage"
         default n
 
+    config DRV_ADC_AIN_1_NAME
+        string "AIN_0 name"
+        depends on DRV_ADC_AIN_1_USE
+        default "AIN_1"     
+            
     config DRV_ADC_AIN_1_ADC_NUM
         int "AIN_1 used ADC (ADC1 or ADC2)"
         depends on DRV_ADC_AIN_1_USE
@@ -317,6 +333,11 @@ menu "Component drv_adc Configuration"
         bool "AIN_2 usage"
         default n
 
+    config DRV_ADC_AIN_2_NAME
+        string "AIN_2 name"
+        depends on DRV_ADC_AIN_2_USE
+        default "AIN_2"     
+        
     config DRV_ADC_AIN_2_ADC_NUM
         int "AIN_2 used ADC (ADC1 or ADC2)"
         depends on DRV_ADC_AIN_2_USE
@@ -338,6 +359,11 @@ menu "Component drv_adc Configuration"
         bool "AIN_3 usage"
         default n
 
+    config DRV_ADC_AIN_3_NAME
+        string "AIN_3 name"
+        depends on DRV_ADC_AIN_3_USE
+        default "AIN_3"     
+        
     config DRV_ADC_AIN_3_ADC_NUM
         int "AIN_3 used ADC (ADC1 or ADC2)"
         depends on DRV_ADC_AIN_3_USE
@@ -365,6 +391,11 @@ menu "Component drv_adc Configuration"
         range 1 2
         default 1
 
+    config DRV_ADC_AIN_4_NAME
+        string "AIN_4 name"
+        depends on DRV_ADC_AIN_4_USE
+        default "AIN_4"     
+        
     config DRV_ADC_AIN_4_ADC_CHANNEL
         int "AIN_4 used ADC Channel"
         depends on DRV_ADC_AIN_4_USE
@@ -380,6 +411,11 @@ menu "Component drv_adc Configuration"
         bool "AIN_5 usage"
         default n
 
+    config DRV_ADC_AIN_5_NAME
+        string "AIN_5 name"
+        depends on DRV_ADC_AIN_5_USE
+        default "AIN_5"     
+        
     config DRV_ADC_AIN_5_ADC_NUM
         int "AIN_5 used ADC (ADC1 or ADC2)"
         depends on DRV_ADC_AIN_5_USE
@@ -401,6 +437,11 @@ menu "Component drv_adc Configuration"
         bool "AIN_6 usage"
         default n
 
+    config DRV_ADC_AIN_6_NAME
+        string "AIN_6 name"
+        depends on DRV_ADC_AIN_6_USE
+        default "AIN_6"     
+        
     config DRV_ADC_AIN_6_ADC_NUM
         int "AIN_6 used ADC (ADC1 or ADC2)"
         depends on DRV_ADC_AIN_6_USE
@@ -422,6 +463,11 @@ menu "Component drv_adc Configuration"
         bool "AIN_7 usage"
         default n
 
+    config DRV_ADC_AIN_7_NAME
+        string "AIN_7 name"
+        depends on DRV_ADC_AIN_7_USE
+        default "AIN_7"     
+        
     config DRV_ADC_AIN_7_ADC_NUM
         int "AIN_7 used ADC (ADC1 or ADC2)"
         depends on DRV_ADC_AIN_7_USE
