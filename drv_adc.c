@@ -416,6 +416,15 @@ static int voltage[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MA
 
 bool calibration_enabled[CONFIG_DRV_ADC_ADC_COUNT_MAX] = { false };    
 
+
+/*  ADC_ATTEN_DB_0   = 0,  !<No input attenumation, ADC can measure up to approx. 800 mV. */
+/*  ADC_ATTEN_DB_2_5 = 1,  !<The input voltage of ADC will be attenuated extending the range of measurement by about 2.5 dB (1.33 x) */
+/*  ADC_ATTEN_DB_6   = 2,  !<The input voltage of ADC will be attenuated extending the range of measurement by about 6 dB (2 x) */
+/*  ADC_ATTEN_DB_11  = 3,  !<The input voltage of ADC will be attenuated extending the range of measurement by about 11 dB (3.55 x) */
+static const adc_atten_t attenuation = ADC_ATTEN_DB_11;
+    
+
+
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 
 adc_oneshot_unit_handle_t adc1_handle;
@@ -483,8 +492,27 @@ uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_i
     adc_cali_handle_t cali_handle = (ain_adc[analog_input] == ADC_UNIT_1) ? adc1_cali_handle : (ain_adc[analog_input] == ADC_UNIT_2) ? adc2_cali_handle : NULL;
 
     adc_cali_raw_to_voltage(cali_handle, analog_input_read_data[analog_input], &millivolts);
+    voltage[] = 
     return millivolts;
 }
+
+#else
+
+uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_input)
+{
+    int millivolts;
+    adc_cali_handle_t cali_handle = (ain_adc[analog_input] == ADC_UNIT_1) ? adc1_cali_handle : (ain_adc[analog_input] == ADC_UNIT_2) ? adc2_cali_handle : NULL;
+
+    adc_cali_raw_to_voltage(cali_handle, analog_input_read_data[analog_input], &millivolts);
+    return millivolts;
+}
+
+#endif
+
+
+
+
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 
 static bool adc_calibration_init(adc_unit_t unit, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
@@ -555,7 +583,7 @@ void adc_init_one_shot(void)
     ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config1, &adc1_handle));
 
     //-------------ADC1 Calibration Init---------------//
-    calibration_enabled[ADC_UNIT_1 - 1] = adc_calibration_init(ADC_UNIT_1, ADC_ATTEN_DB_11, &adc1_cali_handle);
+    calibration_enabled[ADC_UNIT_1 - 1] = adc_calibration_init(ADC_UNIT_1, attenuation, &adc1_cali_handle);
 
 
 
@@ -567,13 +595,13 @@ void adc_init_one_shot(void)
     ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config2, &adc2_handle));
 
     //-------------ADC2 Calibration Init---------------//
-    calibration_enabled[ADC_UNIT_2 - 1] = adc_calibration_init(ADC_UNIT_2, ADC_ATTEN_DB_11, &adc2_cali_handle);
+    calibration_enabled[ADC_UNIT_2 - 1] = adc_calibration_init(ADC_UNIT_2, attenuation, &adc2_cali_handle);
 
 
     //-------------ADC Config---------------//
     adc_oneshot_chan_cfg_t config = {
         .bitwidth = ADC_BITWIDTH_DEFAULT,
-        .atten = ADC_ATTEN_DB_11,
+        .atten = attenuation,
     };
 
     for (int index = 0; index < CONFIG_DRV_ADC_AIN_MAX; index++)
@@ -644,7 +672,7 @@ static void continuous_adc_init(adc_continuous_handle_t *out_handle)
 
         if ((ain_adc[i] >= 0) && (ain_chn[i] >= 0))
         {
-            adc_pattern[i].atten = ADC_ATTEN_DB_0;
+            adc_pattern[i].atten = attenuation;
             adc_pattern[i].channel = ch;
             adc_pattern[i].unit = unit;
             adc_pattern[i].bit_width = SOC_ADC_DIGI_MAX_BITWIDTH;
@@ -989,6 +1017,8 @@ static bool adc_calibration_init(void)
 #endif  //ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
 
 
+
+
 void adc_task_one_shot(void* param)
 {
 
@@ -1112,7 +1142,7 @@ void drv_adc_init(void)
     #else
 
     static const adc_bits_width_t width = ADC_WIDTH_BIT_12;
-    static const adc_atten_t atten = ADC_ATTEN_DB_0;
+
     static const uint32_t default_vref = 1100;
 
 
@@ -1132,13 +1162,13 @@ void drv_adc_init(void)
             {
                 adc1_config_width(width);
                 adc1_channel_t channel = (adc1_channel_t)ain_chn[index];
-                adc1_config_channel_atten(channel, atten);
+                adc1_config_channel_atten(channel, attenuation);
                 calibrate_adc1 = true;
             }
             else if (unit == ADC_UNIT_2)
             {
                 adc2_channel_t channel = (adc2_channel_t)ain_chn[index];
-                adc2_config_channel_atten(channel, atten);
+                adc2_config_channel_atten(channel, attenuation);
                 calibrate_adc2 = true;
             }
         }
@@ -1149,14 +1179,16 @@ void drv_adc_init(void)
         if (calibrate_adc1)
         {
             int index_adc = ADC_UNIT_1 - 1;
-            esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, atten, width, default_vref, &adc_chars[index_adc]);
+            esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_1, attenuation, width, default_vref, &adc_chars[index_adc]);
             print_char_val_type(val_type);
+            calibration_enabled[index_adc] = true;
         }
         if (calibrate_adc2)
         {
             int index_adc = ADC_UNIT_2 - 1;
-            esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_2, atten, width, default_vref, &adc_chars[index_adc]);
+            esp_adc_cal_value_t val_type = esp_adc_cal_characterize(ADC_UNIT_2, attenuation, width, default_vref, &adc_chars[index_adc]);
             print_char_val_type(val_type);
+            calibration_enabled[index_adc] = true;
         }
     }
 
@@ -1213,4 +1245,9 @@ void drv_adc_cont_stat_print(void)
     sprintf(&print_stat_buffer[strlen(print_stat_buffer)], "[%d/%d|%6d]", read_channels_in_loop_min, read_channels_in_loop_max, cont_channels_in_loop_exact_count);
 
     ESP_LOGI(TAG, "%s", print_stat_buffer);
+}
+
+void drv_adc_print_level_warning(void)
+{
+    esp_log_level_set(TAG, ESP_LOG_WARN);
 }
