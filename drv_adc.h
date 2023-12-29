@@ -21,6 +21,8 @@ extern "C"
 #include <stdint.h>
 
 #include "esp_idf_version.h"
+#include "esp_err.h"
+#include "hal/gpio_types.h"
 
 /* *****************************************************************************
  * Configuration Definitions
@@ -75,6 +77,7 @@ void drv_adc_init(void);
 void drv_adc_deinit(void);
 void drv_adc_cont_stat_print(void);
 void drv_adc_print_level_warning(void);
+esp_err_t drv_adc_get_analog_input_gpio(drv_adc_e_analog_input_t analog_input, gpio_num_t *gpio_num);
 
 
 #ifdef __cplusplus

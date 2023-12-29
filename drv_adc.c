@@ -1304,3 +1304,20 @@ void drv_adc_print_level_warning(void)
 {
     esp_log_level_set(TAG, ESP_LOG_WARN);
 }
+
+esp_err_t drv_adc_get_analog_input_gpio(drv_adc_e_analog_input_t analog_input, gpio_num_t *gpio_num)
+{
+    esp_err_t ret = ESP_FAIL;
+    if ((analog_input >= 0) && (analog_input < CONFIG_DRV_ADC_AIN_MAX))
+    {
+        if (ain_adc[analog_input] == DRV_ADC_INDEX_ADC1)
+        {
+            ret = adc1_pad_get_io_num(ain_chn[analog_input], gpio_num);
+        }
+        else if (ain_adc[analog_input] == DRV_ADC_INDEX_ADC2)
+        {
+            ret = adc2_pad_get_io_num(ain_chn[analog_input], gpio_num);
+        }
+    }
+    return ret;
+}
