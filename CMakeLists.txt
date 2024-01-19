@@ -15,6 +15,7 @@ endif()
 idf_component_register(SRCS "drv_adc.c" 
                     INCLUDE_DIRS "." 
                     REQUIRES
+                        "driver"
                         ${conditionally_required_components}
                                       )
                  

@@ -27,15 +27,40 @@
 #include "esp_idf_version.h"
 
 
+/* *****************************************************************************
+ * Configuration Definitions - IDF VERSION
+ **************************************************************************** */
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#define ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5    0       /* force using old adc_driver with esp-idf version >= 5.0.0 */
+#endif
+
+
+#ifndef ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#define ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5    1
+#else
+#define ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5    0
+#endif
+#endif
+
+
+
+
+/* *****************************************************************************
+ * Header Includes - depending on IDF VERSION
+ **************************************************************************** */
+#if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 #include "esp_adc/adc_oneshot.h"
-#include "esp_adc/adc_cali.h"
-#include "esp_adc/adc_cali_scheme.h"
 #include "esp_adc/adc_continuous.h"
 #else
 #include "driver/adc.h"
-#include "esp_adc_cal.h"
+#endif
 
+#if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
+#include "esp_adc/adc_cali.h"
+#include "esp_adc/adc_cali_scheme.h"
+#else
+#include "esp_adc_cal.h"
 #endif
 
 
@@ -44,7 +69,7 @@
  **************************************************************************** */
 #define TAG "drv_adc"
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 #define ADC_CONT_COEF_OVERSIZE_POOL_BUFFER  1           /* how many times to allow buffer non-processed in continuous read bunch of samples */
 #define ADC_CONT_COEF_OVERSIZE_READ_BUFFER  1           /* on process data read how many frames of data to get */
 #endif
@@ -469,7 +494,7 @@ static const adc_atten_t attenuation = ADC_ATTEN_DB_11;
     
 
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
 adc_oneshot_unit_handle_t adc1_handle;
 adc_cali_handle_t adc1_cali_handle = NULL;
@@ -484,13 +509,13 @@ static int channels_continuous_read = 0;
 
 static char printBuffer[256];
 
-#else   // ESP_IDF_VERSION < ESP_IDF_VERSION_VAL(5, 0, 0)
+#else   // ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
 static esp_adc_cal_characteristics_t adc_chars[CONFIG_DRV_ADC_ADC_COUNT_MAX];
 
 
 
-#endif  // ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#endif  // ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
 TaskHandle_t oneshot_task_handle = NULL;
 TaskHandle_t continuous_task_handle = NULL;
@@ -513,7 +538,7 @@ static uint16_t analog_input_read_data[CONFIG_DRV_ADC_AIN_MAX] = {0};
 /* *****************************************************************************
  * Prototype of functions definitions
  **************************************************************************** */
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 static bool adc_calibration_init(adc_unit_t unit, adc_atten_t atten, adc_cali_handle_t *out_handle);
 static void adc_calibration_deinit(adc_cali_handle_t handle);
 #endif
@@ -533,7 +558,7 @@ uint16_t drv_adc_get_last_read_data(drv_adc_e_analog_input_t analog_input)
 }
 
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
 uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_input)
 {
@@ -567,7 +592,7 @@ uint16_t drv_adc_get_last_read_data_millivolts(drv_adc_e_analog_input_t analog_i
 
 
 
-#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
 static bool adc_calibration_init(adc_unit_t unit, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
@@ -947,7 +972,7 @@ void adc_deinit_continuous(void)
     ESP_ERROR_CHECK(adc_continuous_deinit(handle));
 }
 
-#else   //ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#else   //ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
 
 
@@ -1067,7 +1092,7 @@ static bool adc_calibration_init(void)
 }
 
 
-#endif  //ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+#endif  //ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
 
 
@@ -1081,7 +1106,7 @@ void adc_task_one_shot(void* param)
 
         for (int index = 0; index < CONFIG_DRV_ADC_AIN_MAX; index++)
         {
-            #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+            #if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
             adc_oneshot_unit_handle_t adc_handle = (ain_adc[index] == DRV_ADC_INDEX_ADC1) ? adc1_handle : (ain_adc[index] == DRV_ADC_INDEX_ADC2) ? adc2_handle : NULL;
             if ((adc_handle != NULL) && (ain_chn[index] >= 0))
@@ -1166,7 +1191,7 @@ void adc_task_one_shot(void* param)
 
 void drv_adc_init(void)
 {
-    #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+    #if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
     #if CONFIG_DRV_ADC_CONTINUOUS
     xTaskCreate(adc_task_continuous, "adc_continuous", 4096, NULL, configMAX_PRIORITIES - 20, &continuous_task_handle);
     #else
@@ -1256,7 +1281,7 @@ void drv_adc_init(void)
 
 void drv_adc_deinit(void)
 {
-    #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 0, 0)
+    #if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
     #if CONFIG_DRV_ADC_CONTINUOUS
     adc_deinit_continuous();
     #else
