@@ -485,13 +485,16 @@ static int voltage[CONFIG_DRV_ADC_ADC_COUNT_MAX][CONFIG_DRV_ADC_CHANNEL_RANGE_MA
 
 bool calibration_enabled[CONFIG_DRV_ADC_ADC_COUNT_MAX] = { false };    
 
-
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5,2,0)
+/*  ADC_ATTEN_DB_12  = 3,  !<The input voltage of ADC will be attenuated extending the range of measurement by about 12 dB (3.98 x) */
+static const adc_atten_t attenuation = ADC_ATTEN_DB_12;
+#else
 /*  ADC_ATTEN_DB_0   = 0,  !<No input attenumation, ADC can measure up to approx. 800 mV. */
 /*  ADC_ATTEN_DB_2_5 = 1,  !<The input voltage of ADC will be attenuated extending the range of measurement by about 2.5 dB (1.33 x) */
 /*  ADC_ATTEN_DB_6   = 2,  !<The input voltage of ADC will be attenuated extending the range of measurement by about 6 dB (2 x) */
 /*  ADC_ATTEN_DB_11  = 3,  !<The input voltage of ADC will be attenuated extending the range of measurement by about 11 dB (3.55 x) */
 static const adc_atten_t attenuation = ADC_ATTEN_DB_11;
-    
+#endif 
 
 
 #if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
