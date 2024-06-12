@@ -560,6 +560,16 @@ uint16_t drv_adc_get_last_read_data(drv_adc_e_analog_input_t analog_input)
     return analog_input_read_data[analog_input];
 }
 
+int drv_adc_get_last_read_data_mV(drv_adc_e_analog_input_t analog_input)
+{
+    int millivolts = 0;
+    if ((ain_adc[analog_input] < CONFIG_DRV_ADC_ADC_COUNT_MAX) && (ain_chn[analog_input] < CONFIG_DRV_ADC_CHANNEL_RANGE_MAX))
+    {
+        millivolts = voltage[ain_adc[analog_input]][ain_chn[analog_input]];
+    }
+    return millivolts;
+}
+
 
 #if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
@@ -1097,7 +1107,25 @@ static bool adc_calibration_init(void)
 
 #endif  //ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
+void drv_adc_sample_channel(drv_adc_e_analog_input_t analog_input)
+{
+    if (ain_adc[analog_input] == 0)
+    {
+        adc_raw[ain_adc[analog_input]][ain_chn[analog_input]] = adc1_get_raw(ain_chn[analog_input]);
+    }
+    else
+    {
+        esp_err_t err = adc2_get_raw(ain_chn[analog_input], ADC_WIDTH_BIT_DEFAULT, &adc_raw[ain_adc[analog_input]][ain_chn[analog_input]]);
+        if (err != ESP_OK)
+        {
+            ESP_LOGE(TAG, "adc2_get_raw failure %s", esp_err_to_name(err));
+        }
+        else
+        {
 
+        }
+    }
+}
 
 
 void adc_task_one_shot(void* param)
@@ -1195,10 +1223,12 @@ void adc_task_one_shot(void* param)
 void drv_adc_init(void)
 {
     #if ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
+    #if CONFIG_DRV_ADC_SAMPLING_EXTERNAL == 0
     #if CONFIG_DRV_ADC_CONTINUOUS
     xTaskCreate(adc_task_continuous, "adc_continuous", 4096, NULL, configMAX_PRIORITIES - 20, &continuous_task_handle);
     #else
     xTaskCreate(adc_task_one_shot, "adc_oneshot", 4096, NULL, configMAX_PRIORITIES - 20, &oneshot_task_handle);
+    #endif
     #endif
 
     #if CONFIG_DRV_ADC_CONTINUOUS
@@ -1272,11 +1302,12 @@ void drv_adc_init(void)
             calibration_enabled[index_adc] = true;
         }
     }
-
+    #if CONFIG_DRV_ADC_SAMPLING_EXTERNAL == 0
     #if CONFIG_DRV_ADC_CONTINUOUS
     xTaskCreate(adc_task_continuous, "adc_continuous", 4096, NULL, configMAX_PRIORITIES - 20, &continuous_task_handle);
     #else
     xTaskCreate(adc_task_one_shot, "adc_oneshot", 4096, NULL, configMAX_PRIORITIES - 20, &oneshot_task_handle);
+    #endif
     #endif
 
     #endif

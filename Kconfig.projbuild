@@ -4,6 +4,10 @@ menu "Component drv_adc Configuration"
         bool "Use drv_adc component"
         default y
 
+    config DRV_ADC_SAMPLING_EXTERNAL
+        bool "Use external adc sampling trigger"
+        default n
+
     config DRV_ADC_CONTINUOUS
         bool "Use continuous mode or not"
         select ADC_CONTINUOUS_ISR_IRAM_SAFE
