@@ -1107,15 +1107,19 @@ static bool adc_calibration_init(void)
 
 #endif  //ESP_ADC_VERSION_BIGGER_OR_EQUAL_TO_5
 
-void drv_adc_sample_channel(drv_adc_e_analog_input_t analog_input)
+int drv_adc_sample_channel(drv_adc_e_analog_input_t analog_input)
 {
+    int raw_data = 0;
+
     if (ain_adc[analog_input] == 0)
     {
         adc_raw[ain_adc[analog_input]][ain_chn[analog_input]] = adc1_get_raw(ain_chn[analog_input]);
+        raw_data = adc_raw[ain_adc[analog_input]][ain_chn[analog_input]];
     }
     else
     {
         esp_err_t err = adc2_get_raw(ain_chn[analog_input], ADC_WIDTH_BIT_DEFAULT, &adc_raw[ain_adc[analog_input]][ain_chn[analog_input]]);
+        raw_data = adc_raw[ain_adc[analog_input]][ain_chn[analog_input]];
         if (err != ESP_OK)
         {
             ESP_LOGE(TAG, "adc2_get_raw failure %s", esp_err_to_name(err));
@@ -1125,6 +1129,7 @@ void drv_adc_sample_channel(drv_adc_e_analog_input_t analog_input)
 
         }
     }
+    return raw_data;
 }
 
 
